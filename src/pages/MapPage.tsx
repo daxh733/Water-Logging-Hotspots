@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 // Fix icon URLs
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
@@ -43,6 +45,7 @@ interface Report {
 export default function MapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth(); // Get current user
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
@@ -55,6 +58,9 @@ export default function MapPage() {
   const [searching, setSearching] = useState(false);
   const tempMarkerRef = useRef<L.Marker | null>(null);
   const wardMarkerRef = useRef<L.Marker | null>(null);
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   // Get parameters from URL
   const wardNo = searchParams.get('ward');
@@ -123,17 +129,15 @@ export default function MapPage() {
     if (!mapContainerRef.current || mapRef.current) return;
 
     // Determine initial view
-    let initialLat = 28.6139; // Default Delhi
+    let initialLat = 28.6139;
     let initialLng = 77.2090;
     let initialZoom = 11;
 
     if (reportId && reportLat && reportLng) {
-      // Report location takes priority
       initialLat = parseFloat(reportLat);
       initialLng = parseFloat(reportLng);
       initialZoom = 16;
     } else if (wardNo && wardLat && wardLng) {
-      // Ward location
       initialLat = parseFloat(wardLat);
       initialLng = parseFloat(wardLng);
       initialZoom = 15;
@@ -152,15 +156,18 @@ export default function MapPage() {
       maxZoom: 19
     }).addTo(map);
 
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      setNewPosition({ lat: e.latlng.lat, lng: e.latlng.lng });
-      
-      if (tempMarkerRef.current) {
-        tempMarkerRef.current.remove();
-      }
-      
-      tempMarkerRef.current = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
-    });
+    // ONLY ADMIN CAN CLICK TO MARK - Others can only view
+    if (isAdmin) {
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        setNewPosition({ lat: e.latlng.lat, lng: e.latlng.lng });
+        
+        if (tempMarkerRef.current) {
+          tempMarkerRef.current.remove();
+        }
+        
+        tempMarkerRef.current = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+      });
+    }
 
     mapRef.current = map;
 
@@ -228,35 +235,32 @@ export default function MapPage() {
       map.remove();
       mapRef.current = null;
     };
-  }, [wardNo, wardLat, wardLng, wardReadiness, reportId, reportLat, reportLng]);
+  }, [wardNo, wardLat, wardLng, wardReadiness, reportId, reportLat, reportLng, isAdmin]);
 
-  // Load report markers on map
+  // Load report markers on map (VISIBLE TO ALL)
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Clear existing report markers
     reportMarkersRef.current.forEach(marker => marker.remove());
     reportMarkersRef.current = [];
 
     reports.forEach((report) => {
       if (!report.latitude || !report.longitude) return;
 
-      // Color based on status
-      let markerColor = '#3b82f6'; // Blue for Pending
+      let markerColor = '#3b82f6';
       let statusIcon = '⏳';
       
       if (report.status === 'In Progress') {
-        markerColor = '#f59e0b'; // Orange
+        markerColor = '#f59e0b';
         statusIcon = '⚠️';
       } else if (report.status === 'Resolved') {
-        markerColor = '#10b981'; // Green
+        markerColor = '#10b981';
         statusIcon = '✅';
       } else if (report.status === 'Rejected') {
-        markerColor = '#6b7280'; // Gray
+        markerColor = '#6b7280';
         statusIcon = '❌';
       }
 
-      // Special styling if this is the focused report
       const isFocused = reportId && parseInt(reportId) === report.id;
       const pulseAnimation = isFocused ? `
         @keyframes reportPulse {
@@ -344,7 +348,6 @@ export default function MapPage() {
         className: 'custom-popup'
       });
 
-      // Auto-open popup if this is the focused report
       if (isFocused) {
         marker.openPopup();
       }
@@ -352,7 +355,6 @@ export default function MapPage() {
       reportMarkersRef.current.push(marker);
     });
 
-    // Listen for report updates
     const handleReportsUpdate = () => {
       const updatedReports = JSON.parse(localStorage.getItem('userReports') || '[]');
       setReports(updatedReports);
@@ -382,27 +384,39 @@ export default function MapPage() {
 
         mapRef.current.setView([latitude, longitude], 15);
 
-        if (tempMarkerRef.current) {
-          tempMarkerRef.current.remove();
-        }
-        tempMarkerRef.current = L.marker([latitude, longitude])
-          .addTo(mapRef.current)
-          .bindPopup(`<b>${display_name}</b><br>Click on map to mark hotspot here`)
-          .openPopup();
+        // Only admin can mark from search
+        if (isAdmin) {
+          if (tempMarkerRef.current) {
+            tempMarkerRef.current.remove();
+          }
+          tempMarkerRef.current = L.marker([latitude, longitude])
+            .addTo(mapRef.current)
+            .bindPopup(`<b>${display_name}</b><br>Click on map to mark hotspot here`)
+            .openPopup();
 
-        setNewPosition({ lat: latitude, lng: longitude });
+          setNewPosition({ lat: latitude, lng: longitude });
+        } else {
+          // For non-admin, just show location
+          if (tempMarkerRef.current) {
+            tempMarkerRef.current.remove();
+          }
+          tempMarkerRef.current = L.marker([latitude, longitude])
+            .addTo(mapRef.current)
+            .bindPopup(`<b>${display_name}</b>`)
+            .openPopup();
+        }
       } else {
-        alert('Location not found! Try different keywords.');
+        toast.error('Location not found! Try different keywords.');
       }
     } catch (error) {
       console.error('Search error:', error);
-      alert('Search failed. Please try again.');
+      toast.error('Search failed. Please try again.');
     } finally {
       setSearching(false);
     }
   };
 
-  // Update hotspot markers and circles
+  // Update hotspot markers and circles (VISIBLE TO ALL)
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -443,6 +457,28 @@ export default function MapPage() {
         iconAnchor: [14, 14]
       });
 
+      // Delete button only for admin
+      const deleteButton = isAdmin ? `
+        <div style="display: flex; gap: 8px;">
+          <button 
+            onclick="window.deleteHotspot(${spot.id})"
+            style="
+              flex: 1;
+              font-size: 11px;
+              background-color: #7f1d1d;
+              color: #fca5a5;
+              padding: 6px 12px;
+              border-radius: 6px;
+              border: none;
+              cursor: pointer;
+              font-weight: 500;
+            "
+            onmouseover="this.style.backgroundColor='#991b1b'"
+            onmouseout="this.style.backgroundColor='#7f1d1d'"
+          >Delete</button>
+        </div>
+      ` : '';
+
       const marker = L.marker([spot.lat, spot.lng], { icon })
         .addTo(mapRef.current!)
         .bindPopup(`
@@ -460,24 +496,7 @@ export default function MapPage() {
               ">${spot.severity.toUpperCase()}</span>
               ${spot.wardNo ? `<span style="font-size: 11px; color: #9ca3af;">Ward ${spot.wardNo}</span>` : ''}
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button 
-                onclick="window.deleteHotspot(${spot.id})"
-                style="
-                  flex: 1;
-                  font-size: 11px;
-                  background-color: #7f1d1d;
-                  color: #fca5a5;
-                  padding: 6px 12px;
-                  border-radius: 6px;
-                  border: none;
-                  cursor: pointer;
-                  font-weight: 500;
-                "
-                onmouseover="this.style.backgroundColor='#991b1b'"
-                onmouseout="this.style.backgroundColor='#7f1d1d'"
-              >Delete</button>
-            </div>
+            ${deleteButton}
             <p style="font-size: 10px; color: #9ca3af; margin-top: 8px;">
               📍 Affected area: ~750m radius
             </p>
@@ -488,27 +507,35 @@ export default function MapPage() {
 
       markersRef.current.push(marker);
     });
-  }, [hotspots]);
+  }, [hotspots, isAdmin]);
 
-  // Delete hotspot function
+  // Delete hotspot function (ADMIN ONLY)
   useEffect(() => {
-    (window as any).deleteHotspot = (id: number) => {
-      if (confirm('Delete this hotspot?')) {
-        setHotspots(prev => {
-          const updated = prev.filter(spot => spot.id !== id);
-          localStorage.setItem('markedHotspots', JSON.stringify(updated));
-          window.dispatchEvent(new Event('hotspotsUpdated'));
-          return updated;
-        });
-      }
-    };
-  }, []);
+    if (isAdmin) {
+      (window as any).deleteHotspot = (id: number) => {
+        if (confirm('Delete this hotspot?')) {
+          setHotspots(prev => {
+            const updated = prev.filter(spot => spot.id !== id);
+            localStorage.setItem('markedHotspots', JSON.stringify(updated));
+            window.dispatchEvent(new Event('hotspotsUpdated'));
+            return updated;
+          });
+        }
+      };
+    }
+  }, [isAdmin]);
 
-  // Add hotspot function
+  // Add hotspot function (ADMIN ONLY)
   const addHotspot = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (!isAdmin) {
+      toast.error('Only administrators can add hotspots');
+      return;
+    }
+
     if (!newPosition) {
-      alert('Please click on map to select a location first!');
+      toast.error('Please click on map to select a location first!');
       return;
     }
 
@@ -537,7 +564,7 @@ export default function MapPage() {
     
     (e.target as HTMLFormElement).reset();
     setNewPosition(null);
-    alert(`✅ Hotspot added successfully in Ward ${newHotspot.wardNo}!`);
+    toast.success(`Hotspot added successfully in Ward ${newHotspot.wardNo}!`);
   };
 
   const clearSelection = () => {
@@ -692,174 +719,211 @@ export default function MapPage() {
           </form>
         </div>
 
-        {/* Add Hotspot Form */}
-        <div style={{
-          position: 'absolute',
-          top: '90px',
-          right: '20px',
-          backgroundColor: '#1f2937',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
-          width: '400px',
-          maxWidth: '90%',
-          zIndex: 1000,
-          border: '2px solid #3b82f6',
-          maxHeight: 'calc(100vh - 120px)',
-          overflowY: 'auto'
-        }}>
-          <h3 style={{ 
-            fontWeight: 'bold', 
-            fontSize: '20px', 
-            marginBottom: '8px', 
-            color: '#60a5fa',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+        {/* Add Hotspot Form - ADMIN ONLY */}
+        {isAdmin && (
+          <div style={{
+            position: 'absolute',
+            top: '90px',
+            right: '20px',
+            backgroundColor: '#1f2937',
+            padding: '24px',
+            borderRadius: '16px',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
+            width: '400px',
+            maxWidth: '90%',
+            zIndex: 1000,
+            border: '2px solid #3b82f6',
+            maxHeight: 'calc(100vh - 120px)',
+            overflowY: 'auto'
           }}>
-            🚰 Mark Water Hotspot
-          </h3>
-          
-          {newPosition ? (
-            <>
-              <p style={{ fontSize: '12px', color: '#22c55e', marginBottom: '16px', fontWeight: '600' }}>
-                ✓ Location Selected<br/>
-                Lat: {newPosition.lat.toFixed(6)}, Lng: {newPosition.lng.toFixed(6)}<br/>
-                <span style={{ color: '#60a5fa' }}>
-                  Ward: {findNearestWard(newPosition.lat, newPosition.lng)}
-                </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <h3 style={{ 
+                fontWeight: 'bold', 
+                fontSize: '20px', 
+                color: '#60a5fa',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                margin: 0
+              }}>
+                🚰 Mark Water Hotspot
+              </h3>
+              <span style={{
+                fontSize: '10px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                backgroundColor: '#f59e0b20',
+                color: '#f59e0b',
+                fontWeight: '600'
+              }}>
+                ADMIN ONLY
+              </span>
+            </div>
+            
+            {newPosition ? (
+              <>
+                <p style={{ fontSize: '12px', color: '#22c55e', marginBottom: '16px', fontWeight: '600' }}>
+                  ✓ Location Selected<br/>
+                  Lat: {newPosition.lat.toFixed(6)}, Lng: {newPosition.lng.toFixed(6)}<br/>
+                  <span style={{ color: '#60a5fa' }}>
+                    Ward: {findNearestWard(newPosition.lat, newPosition.lng)}
+                  </span>
+                </p>
+                <button
+                  onClick={clearSelection}
+                  style={{
+                    fontSize: '11px',
+                    backgroundColor: '#374151',
+                    color: '#d1d5db',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    marginBottom: '16px'
+                  }}
+                >
+                  Clear Selection
+                </button>
+              </>
+            ) : (
+              <p style={{ fontSize: '12px', color: '#f97316', marginBottom: '20px', fontWeight: '600' }}>
+                ⚠️ Click on map or search location to select spot
               </p>
+            )}
+
+            <form onSubmit={addHotspot}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '6px',
+                  color: '#e5e7eb'
+                }}>
+                  Issue Title *
+                </label>
+                <input
+                  name="title"
+                  placeholder="e.g., Water Leakage on Main Road"
+                  required
+                  className="dark-input"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #374151',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: '#111827',
+                    color: '#f3f4f6'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '6px',
+                  color: '#e5e7eb'
+                }}>
+                  Severity Level *
+                </label>
+                <select
+                  name="severity"
+                  required
+                  className="dark-input"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #374151',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: '#111827',
+                    color: '#f3f4f6'
+                  }}
+                >
+                  <option value="low">🟢 Low - Minor Issue</option>
+                  <option value="medium">🟠 Medium - Needs Attention</option>
+                  <option value="high">🔴 High - Urgent/Critical</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '6px',
+                  color: '#e5e7eb'
+                }}>
+                  Description *
+                </label>
+                <textarea
+                  name="description"
+                  placeholder="Describe the water issue in detail..."
+                  required
+                  rows={4}
+                  className="dark-input"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #374151',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    resize: 'none',
+                    backgroundColor: '#111827',
+                    color: '#f3f4f6'
+                  }}
+                />
+              </div>
+
               <button
-                onClick={clearSelection}
+                type="submit"
+                className="dark-button"
                 style={{
-                  fontSize: '11px',
-                  backgroundColor: '#374151',
-                  color: '#d1d5db',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
                   border: 'none',
+                  fontWeight: '600',
                   cursor: 'pointer',
-                  marginBottom: '16px'
+                  fontSize: '14px'
                 }}
               >
-                Clear Selection
+                Add Hotspot
               </button>
-            </>
-          ) : (
-            <p style={{ fontSize: '12px', color: '#f97316', marginBottom: '20px', fontWeight: '600' }}>
-              ⚠️ Click on map or search location to select spot
+            </form>
+          </div>
+        )}
+
+        {/* Info Badge for Non-Admin */}
+        {!isAdmin && (
+          <div style={{
+            position: 'absolute',
+            top: '90px',
+            right: '20px',
+            backgroundColor: '#1f2937',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+            width: '300px',
+            maxWidth: '90%',
+            zIndex: 1000,
+            border: '1px solid #374151'
+          }}>
+            <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, lineHeight: '1.5' }}>
+              <span style={{ fontSize: '16px', marginRight: '8px' }}>ℹ️</span>
+              You are viewing the map in <strong style={{ color: '#60a5fa' }}>read-only mode</strong>. 
+              All reports and hotspots are visible. Only administrators can add new hotspots.
             </p>
-          )}
-
-          <form onSubmit={addHotspot}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '13px', 
-                fontWeight: '600', 
-                marginBottom: '6px',
-                color: '#e5e7eb'
-              }}>
-                Issue Title *
-              </label>
-              <input
-                name="title"
-                placeholder="e.g., Water Leakage on Main Road"
-                required
-                className="dark-input"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '2px solid #374151',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: '#111827',
-                  color: '#f3f4f6'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '13px', 
-                fontWeight: '600', 
-                marginBottom: '6px',
-                color: '#e5e7eb'
-              }}>
-                Severity Level *
-              </label>
-              <select
-                name="severity"
-                required
-                className="dark-input"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '2px solid #374151',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: '#111827',
-                  color: '#f3f4f6'
-                }}
-              >
-                <option value="low">🟢 Low - Minor Issue</option>
-                <option value="medium">🟠 Medium - Needs Attention</option>
-                <option value="high">🔴 High - Urgent/Critical</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '13px', 
-                fontWeight: '600', 
-                marginBottom: '6px',
-                color: '#e5e7eb'
-              }}>
-                Description *
-              </label>
-              <textarea
-                name="description"
-                placeholder="Describe the water issue in detail..."
-                required
-                rows={4}
-                className="dark-input"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '2px solid #374151',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  resize: 'none',
-                  backgroundColor: '#111827',
-                  color: '#f3f4f6'
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="dark-button"
-              style={{
-                width: '100%',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Add Hotspot
-            </button>
-          </form>
-        </div>
+          </div>
+        )}
 
         {/* Total Counter */}
         <div style={{

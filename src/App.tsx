@@ -64,6 +64,7 @@ function App() {
                   <Route path="/wards" element={<Wards />} />
                   <Route path="/alerts" element={<Alerts />} />
                   <Route path="/login" element={<Login />} />
+                  {/* <Route path="/" element={<Login />} /> */}
                   <Route path="/register" element={<Register />} />
                   <Route path="/user-dashboard" element={<UserDashboard />} />
                   <Route path="/admin-dashboard" element={<AdminDashboard />} />

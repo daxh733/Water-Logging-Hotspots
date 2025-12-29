@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Droplets, Mail, Lock, Eye, EyeOff, User, Shield } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,15 +55,29 @@ const Login = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
+        {/* Logo with Image - ROUNDED */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="p-3 rounded-xl gradient-primary shadow-lg">
-              <Droplets className="h-8 w-8 text-primary-foreground" />
+          <Link to="/" className="inline-flex flex-col items-center gap-3">
+            {/* Logo Image with Rounded Corners */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl group-hover:bg-primary/30 transition-all duration-300"></div>
+              <div className="relative p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-2xl group-hover:shadow-primary/25 transition-all duration-300">
+                <img 
+                  src="/logo.png" 
+                  alt="Delhi WaterWatch Logo" 
+                  className="h-16 w-16 object-contain rounded-xl"
+                />
+              </div>
+            </div>
+            
+            {/* App Name */}
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+                Delhi WaterWatch
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">Sign in to access your account</p>
             </div>
           </Link>
-          <h1 className="text-2xl font-bold mt-4">Delhi WaterWatch</h1>
-          <p className="text-muted-foreground text-sm">Sign in to access your account</p>
         </div>
 
         <Card className="glass-card">
