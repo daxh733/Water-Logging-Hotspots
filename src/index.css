@@ -1,0 +1,308 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 152 82% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 210 100% 50%;
+
+    --radius: 0.75rem;
+
+    --chart-1: 210 100% 50%;
+    --chart-2: 152 82% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 280 65% 60%;
+
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 20% 88%;
+    --sidebar-ring: 210 100% 50%;
+
+    /* Premium shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    
+    /* Glow effects */
+    --glow-destructive: 0 0 20px hsl(0 84% 60% / 0.3);
+    --glow-warning: 0 0 20px hsl(38 92% 50% / 0.3);
+    --glow-success: 0 0 20px hsl(152 82% 39% / 0.3);
+    --glow-primary: 0 0 20px hsl(210 100% 50% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border/60 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card border border-border/60 shadow-lg backdrop-blur-sm;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .glass-card-elevated {
+    @apply bg-card border border-border/40 shadow-xl backdrop-blur-sm;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(210 100% 50%) 0%, hsl(210 100% 40%) 100%);
+  }
+
+  .gradient-success {
+    background: linear-gradient(135deg, hsl(152 82% 39%) 0%, hsl(152 82% 30%) 100%);
+  }
+
+  .gradient-warning {
+    background: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(28 92% 45%) 100%);
+  }
+
+  .gradient-destructive {
+    background: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 50%) 100%);
+  }
+
+  .stat-card {
+    @apply glass-card rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  .stat-card-critical {
+    @apply stat-card;
+    box-shadow: var(--shadow-lg), var(--glow-destructive);
+  }
+
+  .stat-card-warning {
+    @apply stat-card;
+    box-shadow: var(--shadow-lg), var(--glow-warning);
+  }
+
+  .nav-link {
+    @apply px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-all duration-200;
+  }
+
+  .nav-link.active {
+    @apply text-primary bg-primary/15 font-medium;
+  }
+
+  .pulse-animation {
+    animation: pulse-glow 2s infinite;
+  }
+
+  .blink-animation {
+    animation: blink 1s infinite;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .counter-animation {
+    animation: countUp 1s ease-out forwards;
+  }
+
+  .severity-strip-high {
+    @apply border-l-4 border-l-destructive;
+  }
+
+  .severity-strip-medium {
+    @apply border-l-4 border-l-warning;
+  }
+
+  .severity-strip-low {
+    @apply border-l-4 border-l-success;
+  }
+
+  .premium-card {
+    @apply bg-card rounded-2xl border border-border/50 shadow-lg transition-all duration-300;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .premium-card:hover {
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-2px);
+  }
+
+  .metric-value {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  .metric-label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground/70;
+  }
+
+  .insight-card {
+    @apply p-4 rounded-xl bg-primary/5 border border-primary/10;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+
+  .glow-destructive {
+    box-shadow: var(--glow-destructive);
+  }
+
+  .glow-warning {
+    box-shadow: var(--glow-warning);
+  }
+
+  .glow-success {
+    box-shadow: var(--glow-success);
+  }
+
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(0 84% 60% / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px hsl(0 84% 60% / 0.2);
+  }
+}
+
+@keyframes blink {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Leaflet custom styles */
+.leaflet-container {
+  @apply rounded-xl;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply bg-card text-foreground rounded-xl shadow-xl border border-border/50;
+}
+
+.leaflet-popup-tip {
+  @apply bg-card;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+}
+
+.leaflet-control-zoom a {
+  @apply bg-card text-foreground border-border hover:bg-secondary;
+}
+
+.leaflet-control-attribution {
+  @apply bg-card/80 text-muted-foreground text-xs;
+}
