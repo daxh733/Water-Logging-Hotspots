@@ -3,11 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext"; // Import AuthProvider
-import Dashboard from "./pages/Dashboard";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext"; // Import AuthProvider
 import MapPage from "./pages/MapPage";
 import Analytics from "./pages/Analytics";
 import Wards from "./pages/Wards";
@@ -20,6 +19,36 @@ import NotFound from "./pages/NotFound";
 import { wards } from "@/data/mockData";
 
 const queryClient = new QueryClient();
+
+// Protected Route Component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Dashboard Redirect based on role
+function DashboardRedirect() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/user-dashboard'} replace />;
+}
 
 function App() {
   useEffect(() => {
@@ -58,16 +87,15 @@ function App() {
               <Sonner />
               <BrowserRouter>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/map" element={<MapPage />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/wards" element={<Wards />} />
-                  <Route path="/alerts" element={<Alerts />} />
+                  <Route path="/" element={<DashboardRedirect />} />
                   <Route path="/login" element={<Login />} />
-                  {/* <Route path="/" element={<Login />} /> */}
                   <Route path="/register" element={<Register />} />
-                  <Route path="/user-dashboard" element={<UserDashboard />} />
-                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                  <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                  <Route path="/admin-dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
+                  <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                  <Route path="/wards" element={<ProtectedRoute><Wards /></ProtectedRoute>} />
+                  <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

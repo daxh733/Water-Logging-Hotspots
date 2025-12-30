@@ -13,18 +13,26 @@ import {
 import { Button } from '@/components/ui/button';
 import { UserMenu } from './UserMenu';
 import { NotificationPanel } from './NotificationPanel';
-
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/map', label: 'Map', icon: Map },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/wards', label: 'Wards', icon: Building2 },
-  { path: '/alerts', label: 'Alerts', icon: AlertTriangle },
-];
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Header() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // Generate navigation items based on user role
+  const getDashboardPath = () => {
+    if (!user) return '/';
+    return user.role === 'admin' ? '/admin-dashboard' : '/user-dashboard';
+  };
+  
+  const navItems = [
+    { path: getDashboardPath(), label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/map', label: 'Map', icon: Map },
+    { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/wards', label: 'Wards', icon: Building2 },
+    { path: '/alerts', label: 'Alerts', icon: AlertTriangle },
+  ];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">

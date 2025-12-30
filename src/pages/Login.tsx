@@ -22,7 +22,12 @@ const Login = () => {
 
   // Redirect if already logged in
   if (isAuthenticated) {
-    navigate('/');
+    const { user } = useAuth();
+    if (user?.role === 'admin') {
+      navigate('/admin-dashboard');
+    } else {
+      navigate('/user-dashboard');
+    }
     return null;
   }
 
@@ -40,9 +45,13 @@ const Login = () => {
     setIsLoading(false);
 
     if (success) {
-      // Redirect to homepage instead of dashboard
+      // Redirect based on role
       setTimeout(() => {
-        navigate('/');
+        if (role === 'admin') {
+          navigate('/admin-dashboard');
+        } else {
+          navigate('/user-dashboard');
+        }
       }, 500);
     }
   };
