@@ -4,7 +4,8 @@ import L from 'leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, MapPin, Clock, Ruler, Navigation, X, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { hotspots } from '@/data/mockData';
+import { Badge } from '@/components/ui/badge';
+import { hotspots, wards } from '@/data/mockData';
 import type { Hotspot, RiskLevel } from '@/types';
 import 'leaflet/dist/leaflet.css';
 
@@ -58,6 +59,72 @@ const userIcon = L.divIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
+
+// MCD Ward Icon with Building Symbol
+const createMCDIcon = (wardNo: number, readiness: number) => {
+  const getReadinessColor = () => {
+    if (readiness >= 80) return '#22c55e';
+    if (readiness >= 60) return '#3b82f6';
+    if (readiness >= 40) return '#f59e0b';
+    return '#ef4444';
+  };
+
+  return L.divIcon({
+    className: 'mcd-ward-marker',
+    html: `
+      <div style="
+        background: white;
+        width: 48px;
+        height: 56px;
+        border-radius: 8px;
+        border: 3px solid ${getReadinessColor()};
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      ">
+        <!-- MCD Building Icon SVG -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${getReadinessColor()}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"/>
+          <path d="M9 8h1"/>
+          <path d="M9 12h1"/>
+          <path d="M9 16h1"/>
+          <path d="M14 8h1"/>
+          <path d="M14 12h1"/>
+          <path d="M14 16h1"/>
+          <path d="M6 3h12l2 18H4z"/>
+        </svg>
+        <div style="
+          font-size: 10px;
+          font-weight: 800;
+          color: ${getReadinessColor()};
+          margin-top: 2px;
+          background: white;
+          padding: 1px 4px;
+          border-radius: 3px;
+          border: 1.5px solid ${getReadinessColor()};
+        ">W-${wardNo}</div>
+        <div style="
+          position: absolute;
+          bottom: -10px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-top: 10px solid ${getReadinessColor()};
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));
+        "></div>
+      </div>
+    `,
+    iconSize: [48, 66],
+    iconAnchor: [24, 66],
+    popupAnchor: [0, -66],
+  });
+};
 
 const riskColors: Record<RiskLevel, string> = {
   HIGH: '#ef4444',
@@ -165,6 +232,69 @@ export function HotspotMap({ showGeofencing = true, height = '500px' }: HotspotM
             />
           ))}
 
+          {/* Ward MCD Markers */}
+          {wards.map((ward) => (
+            <Marker
+              key={`ward-${ward.wardNo}`}
+              position={ward.coords}
+              icon={createMCDIcon(ward.wardNo, ward.readiness)}
+            >
+              <Popup>
+                <div className="p-3 min-w-[250px]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-base">Ward {ward.wardNo}</h3>
+                      <p className="text-sm text-gray-600">{ward.name}</p>
+                    </div>
+                    <Badge 
+                      variant={ward.readiness >= 60 ? "default" : "destructive"}
+                      className="ml-2"
+                    >
+                      {ward.readiness}%
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Flood Readiness:</span>
+                      <span className={`font-semibold ${ward.readiness >= 60 ? 'text-green-600' : 'text-red-600'}`}>
+                        {ward.readiness >= 80 ? 'Excellent' : 
+                         ward.readiness >= 60 ? 'Good' : 
+                         ward.readiness >= 40 ? 'Moderate' : 'Low'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Water-logging Hotspots:</span>
+                      <span className="font-semibold text-orange-600">{ward.hotspots}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-2 mb-2">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Response Resources:</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-center p-1.5 bg-blue-50 rounded">
+                        <div className="font-bold text-blue-600">{ward.resources.pumps}</div>
+                        <div className="text-gray-600">Pumps</div>
+                      </div>
+                      <div className="text-center p-1.5 bg-green-50 rounded">
+                        <div className="font-bold text-green-600">{ward.resources.personnel}</div>
+                        <div className="text-gray-600">Personnel</div>
+                      </div>
+                      <div className="text-center p-1.5 bg-orange-50 rounded">
+                        <div className="font-bold text-orange-600">{ward.resources.vehicles}</div>
+                        <div className="text-gray-600">Vehicles</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 pt-1 border-t">
+                    Last maintenance: {ward.lastMaintenance}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
           {/* Hotspot markers */}
           {hotspots.map((hotspot) => (
             <Marker
@@ -225,18 +355,59 @@ export function HotspotMap({ showGeofencing = true, height = '500px' }: HotspotM
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-[1000] glass-card p-3 rounded-lg">
-        <h4 className="font-semibold text-xs mb-2">Risk Levels</h4>
-        <div className="space-y-1">
-          {(['HIGH', 'MEDIUM', 'LOW'] as RiskLevel[]).map((level) => (
-            <div key={level} className="flex items-center gap-2 text-xs">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: riskColors[level] }}
-              />
-              <span className="capitalize">{level.toLowerCase()} Risk</span>
+      <div className="absolute bottom-4 left-4 z-[1000] glass-card p-3 rounded-lg max-w-xs">
+        <h4 className="font-semibold text-xs mb-2">Map Legend</h4>
+        
+        {/* Ward MCD Symbol */}
+        <div className="mb-3">
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">MCD Ward Offices</p>
+          <div className="flex items-center gap-2 text-xs mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="text-primary">
+              <path d="M3 21h18"/>
+              <path d="M9 8h1"/>
+              <path d="M9 12h1"/>
+              <path d="M9 16h1"/>
+              <path d="M14 8h1"/>
+              <path d="M14 12h1"/>
+              <path d="M14 16h1"/>
+              <path d="M6 3h12l2 18H4z"/>
+            </svg>
+            <span>Municipal Ward Office</span>
+          </div>
+          <div className="space-y-1 ml-1">
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#22c55e' }}></div>
+              <span>80-100% Readiness</span>
             </div>
-          ))}
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#3b82f6' }}></div>
+              <span>60-79% Readiness</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#f59e0b' }}></div>
+              <span>40-59% Readiness</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#ef4444' }}></div>
+              <span>0-39% Readiness</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Hotspot Risk Levels */}
+        <div className="border-t pt-2">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Water-logging Hotspots</p>
+          <div className="space-y-1">
+            {(['HIGH', 'MEDIUM', 'LOW'] as RiskLevel[]).map((level) => (
+              <div key={level} className="flex items-center gap-2 text-xs">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: riskColors[level] }}
+                />
+                <span className="capitalize">{level.toLowerCase()} Risk</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
